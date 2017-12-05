@@ -21,7 +21,9 @@ class SSH:
 
     def exec_cmd(self,cmd):
         print(cmd)
-        stdin,stdout,stderr = self.ssh.exec_command(cmd,get_pty=False)
+        #self.ssh.exec_command(cmd)
+
+        stdin,stdout,stderr = self.ssh.exec_command(cmd)
         if stderr.channel.recv_exit_status() != 0:
             raise FalhaExecucaoException(stderr.read())
         else:
@@ -52,11 +54,11 @@ class ExecutarRemoto(object):
     def executarRemoto(self,linguagemComando = "python"):
         try:
             if(linguagemComando=="java"):
-                self.ssh.exec_cmd("cd %s/; nohup java -jar %s > /dev/null 2>&1 &" %(self.caminhoRemoto,self.fileToExecute))
+                self.ssh.exec_cmd("cd %s/; nohup java -jar %s/%s </dev/null &> output.out 2>&1&" %(self.caminhoRemoto,self.caminhoRemoto,self.fileToExecute))
             elif(linguagemComando=="python"):
-                self.ssh.exec_cmd("cd %s/; nohup python -u %s > /dev/null 2>&1 &"%(self.caminhoRemoto,self.fileToExecute))
+                self.ssh.exec_cmd("cd %s/; nohup python -u %s/%s </dev/null &> output.out 2>&1&"%(self.caminhoRemoto,self.caminhoRemoto,self.fileToExecute))
             else:
-                self.ssh.exec_cmd("cd %s/; nohup %s -u %s > /dev/null 2>&1 &"%(self.caminhoRemoto,linguagemComando,self.fileToExecute))
+                self.ssh.exec_cmd("cd %s/; nohup %s -u %s/%s </dev/null &> output.out 2>&1&"%(self.caminhoRemoto,linguagemComando,self.caminhoRemoto,self.fileToExecute))
             print("programa executado")
         except FalhaExecucaoException as e:
             print(e)
@@ -106,72 +108,8 @@ class ExecutarRemoto(object):
             print("copia realizada")
         except FalhaExecucaoException as e:
             print("Erro ao copiar: "+e)
-        
-    '''
-    def _enviarParaRemoto(self,dirLocal,remoto):
-        for file in dirLocal:
-            print(file)
-            arq = self._getFileName(file)
-            if(os.path.isdir(file)):#Se for um diretorio
-                subDirRemoto = self.caminhoRemoto+self.barraR+arq
-                #Cria o subdirotio no servidor
-                self.ssh.exec_cmd( "mkdir -p %s"%(subDirRemoto))
-                self._enviarParaRemoto(dirLocal,subDirRemoto)
-            else:
-                print(arq)
-                self.ssh.scp.put("%s" %arq,"%s"%(remoto))
-               
-    def _getFileName(self,arquivo):
-        arquivoSep = arquivo.split(self.barra)
-        return arquivoSep[-1]
-    '''
-#Versao mais simples que nao exige pacotes externos(parmiko ou scp) 
-#porem so funciona em um cliente linux
-class ExecutarRemotoOs(object):
     
-    def __init__(self,user,ip,caminhoRemoto,fileToExecute = "main.py"):
-        self.user = user
-        self.ip = ip
-        self.caminhoRemoto = caminhoRemoto
-        self.fileToExecute = fileToExecute
-        
-    def executarRemoto(self,linguagem="python"):
-        
-        if(linguagem == "python"):
-            os.system("ssh %s@%s python %s/%s"%(self.user,self.ip,self.caminhoRemoto,self.fileToExecute))
-        elif(linguagem=="java"):
-            os.system("ssh %s@%s java -jar %s/%s"%(self.user,self.ip,self.caminhoRemoto,self.fileToExecute)) 
-        else:
-            os.system("ssh %s@%s python %s/%s"%(self.user,self.ip,self.caminhoRemoto,self.fileToExecute))
-    
-    def copiarParaRemoto(self):
-        self.apagarRemoto()
-        os.system("ssh %s@%s mkdir -p %s"%(self.user,self.ip,self.caminhoRemoto))
-        os.system("scp -r %s/* %s@%s:%s"%(os.getcwd(),self.user,self.ip,self.caminhoRemoto))
-    
-    def apagarRemoto(self):
-        os.system("ssh %s@%s rm -r %s"%(self.user,self.ip,self.caminhoRemoto))
-    
-    '''
-    def sincronizarRemoto(self,arquivos = g.glob(os.getcwd()+"/*"),dir=""):
-        for file in arquivos:
-            fNome,dire = self._getFileAndForlder(file)
-            if(os.path.isdir(file)):
-                self.sincronizarRemoto(file,fNome) 
-            else:
-                arqR = "%s%s/%s"%(self.caminhoRemoto,dir,fNome)
-                if(filecmp.cmp(file,arqR)==False):
-                    os.system("scp %s %s@%s:%s"%(file,self.user,self.ip,arqR))
-                                 
-    def _getFileAndForlder(self,arquivo):
-        arquivoSep = arquivo.split("/")
-        return arquivoSep[-1],arquivoSep[-2]
-    
-    def _mountarRemoto(self):
-        self.pMontada = os.getcwd()+"/mnt"
-        os.system("sshfs -o allow_other,default_permissions %s@%s:/ %s"%(self.user,self.ip,self.pMontada))
-    '''     
-    
-    
-    
-
+    def copiarParaRemotoGit(self,linkGithub):
+        nomeRepo = linkGithub.split("/")[-1]
+        self.ssh.exec_cmd("git clone %s; mv %s %s;chmod 777 %s" %(linkGithub,nomeRepo,self.caminhoRemoto,self.caminhoRemoto))
+         
